@@ -94,7 +94,7 @@ static void tv_init(ctx_t* ctx, la_window_t* window) {
 	jlgr_draw_msge(window, window->textures.logo, 0, "Loaded Sqlite File....");
         ctx->cascade = ccv_scd_classifier_cascade_read("face.sqlite3");
 	jlgr_draw_msge(window, window->textures.logo, 0, "Done!");
-//	jl_thread_mutex_new(jl, &ctx->detections.mutex);
+	ctx->detections.mutex = SDL_CreateMutex();
 	la_thread_new(NULL, tv_vision, "vision", ctx);
 
 	la_draw_fnchange(window, (la_draw_fn_t)tv_draw, la_draw_dont, (la_draw_fn_t)tv_resize);

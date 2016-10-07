@@ -1,6 +1,8 @@
 #include "main.h"
 #include "la_video.h"
 
+#include <SDL_thread.h>
+
 uint8_t tv_vision_sync(ctx_t* ctx) {
 	int i;
 
@@ -29,9 +31,9 @@ uint8_t tv_vision_sync(ctx_t* ctx) {
 
 int tv_vision(ctx_t* ctx) {
 	while(1) {
-//		jl_thread_mutex_lock(&ctx->detections.mutex);
+		SDL_LockMutex(ctx->detections.mutex);
 		tv_vision_sync(ctx);
-//		jl_thread_mutex_unlock(&ctx->detections.mutex);
+		SDL_UnlockMutex(ctx->detections.mutex);
 
 		if(ctx->vision_objects) ccv_array_free(ctx->vision_objects);
 		ctx->vision_objects = ccv_scd_detect_objects(ctx->matrix,
