@@ -1,6 +1,7 @@
 #include <car.h>
-#include "jl.h"
-#include "jlgr.h"
+#include <la.h>
+#include <la_ro.h>
+//#include "jlgr.h"
 #include "ccv.h"
 
 enum {
@@ -19,14 +20,14 @@ typedef struct{
 	uint32_t video_stream_texture;
 	uint8_t pixels[640*480*3];
 	ccv_scd_classifier_cascade_t* cascade;
-	jl_vo_t vo;
-	jl_vo_t display;
-	jl_vo_t pointer;
+	la_ro_t vo;
+	la_ro_t display;
+	la_ro_t pointer;
 	ccv_dense_matrix_t* matrix;
 	ccv_array_t* vision_objects;
 
 	struct{
-		jl_mutex_t mutex;
+		SDL_mutex* mutex;
 		jl_rect_t rect[8]; // Detect up to 8
 		uint8_t count; // 0 - 8
 	} detections;
