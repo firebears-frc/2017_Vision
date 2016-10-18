@@ -2,6 +2,7 @@
 #include "la_video.h"
 
 #include <la_thread.h>
+#include <la_file.h>
 
 int tv_vision(void* data);
 
@@ -10,6 +11,8 @@ float color[] = { 0.f, 1.f, 0.f, 1.f };
 static void tv_exit(ctx_t* ctx) {
 	const char* error;
 
+	la_print("EXIT %p", ctx);
+//	car_camera_kill(&ctx->camera);
 	if((error = car_camera_kill(&ctx->camera)))
 		la_panic("car_camera_kill error %s:", error);
 	ccv_scd_classifier_cascade_free(ctx->cascade);
@@ -26,6 +29,21 @@ static void tv_panic(ctx_t* ctx, const char* format, ...) {
 }
 
 void tv_loop(ctx_t* ctx) {
+	la_window_t* window = ctx->window;
+	uint8_t pixels[PIXEL_SIZE];
+
+	if(window->input.keyboard.k == ' ' && window->input.keyboard.p &&
+		window->input.keyboard.h)
+	{
+		SDL_LockMutex(ctx->detections.mutex);
+		la_buffer_t savefile;
+//		jlgr_notify(window, "PICTURE");
+		la_safe_get(&ctx->pixels, pixels, PIXEL_SIZE);
+		la_video_make_jpeg(&savefile, 90, pixels, 640, 480);
+		SDL_UnlockMutex(ctx->detections.mutex);
+		la_file_truncate("picture.jpg");
+		la_file_append("picture.jpg", savefile.data, savefile.size);
+	}
 }
 
 uint8_t tv_locked_loop(ctx_t* ctx, la_window_t* window) {
@@ -38,7 +56,7 @@ uint8_t tv_locked_loop(ctx_t* ctx, la_window_t* window) {
 	int i;
 	for (i = 0; i < ctx->detections.count; i++) {
 		jl_rect_t rc = ctx->detections.rect[i];
-		printf("%f %f %f %f\n", rc.x, rc.y, rc.w, rc.h);
+//		printf("%f %f %f %f\n", rc.x, rc.y, rc.w, rc.h);
 		rc.y *= jl_gl_ar(window);
 		rc.h *= jl_gl_ar(window);
 		rc.x *= jl_gl_ar(window) * (640.f/480.f);
@@ -57,13 +75,17 @@ uint8_t tv_locked_loop(ctx_t* ctx, la_window_t* window) {
 
 static void tv_draw(ctx_t* ctx, la_window_t* window) {
 	const char* error;
-	uint16_t w, h;
+	uint32_t w, h;
+	uint8_t pixels[PIXEL_SIZE];
 
 	if((error = car_camera_loop(&ctx->camera)))
 		tv_panic(ctx, "camera loop error: %s", error);
 	SDL_LockMutex(ctx->detections.mutex);
-	la_video_load_jpeg(ctx->pixels, ctx->video_stream, ctx->camera.size, &w, &h);
-	la_texture_set(window, ctx->video_stream_texture, ctx->pixels, 640, 480, 3);
+
+	//
+	la_video_load_jpeg(pixels, ctx->video_stream, ctx->camera.size, &w, &h);
+	la_safe_set(&ctx->pixels, pixels, PIXEL_SIZE);
+	la_texture_set(window, ctx->video_stream_texture, pixels, 640, 480, 3);
 	la_ro_change_image(&ctx->display, ctx->video_stream_texture, 0, 0, -1, 0);
 	la_ro_draw(&ctx->display);
 
@@ -85,19 +107,19 @@ static inline void tv_init_camera(ctx_t* ctx, la_window_t* window) {
 	const char* error;
 	if((error = car_camera_init(&ctx->camera, 0, 640, 480, &ctx->video_stream)))
 		tv_panic(ctx, "car_camera_init error %s:", error);
+	la_print("%p", ctx);
 	ctx->video_stream_texture = la_texture_new(window, NULL, 640, 480, 3);
 }
 
 static void tv_init(ctx_t* ctx, la_window_t* window) {
-	jlgr_draw_msge(window, window->textures.logo, 0, "Loading Camera....");
 	tv_init_camera(ctx, window);
-	jlgr_draw_msge(window, window->textures.logo, 0, "Loaded Sqlite File....");
         ctx->cascade = ccv_scd_classifier_cascade_read("face.sqlite3");
-	jlgr_draw_msge(window, window->textures.logo, 0, "Done!");
 	ctx->detections.mutex = SDL_CreateMutex();
 	la_thread_new(NULL, tv_vision, "vision", ctx);
 
-	la_draw_fnchange(window, (la_draw_fn_t)tv_draw, la_draw_dont, (la_draw_fn_t)tv_resize);
+	la_draw_fnchange(window, (la_draw_fn_t)tv_draw, la_draw_dont,
+		(la_draw_fn_t)tv_resize);
+	ctx->window = window;
 }
 
 int main(int argc, char* argv[]) {

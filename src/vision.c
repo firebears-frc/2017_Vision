@@ -5,9 +5,11 @@
 
 uint8_t tv_vision_sync(ctx_t* ctx) {
 	int i;
+	uint8_t pixels[PIXEL_SIZE];
 
 	if(ctx->matrix) ccv_matrix_free(ctx->matrix);
-	ccv_read(ctx->pixels, &ctx->matrix, CCV_IO_RGB_RAW, 480, 640,
+	la_safe_get(&ctx->pixels, pixels, PIXEL_SIZE);
+	ccv_read(pixels, &ctx->matrix, CCV_IO_RGB_RAW, 480, 640,
 		640*3);
 
 	if(ctx->vision_objects == NULL) return 1;
@@ -25,7 +27,7 @@ uint8_t tv_vision_sync(ctx_t* ctx) {
 			((float)face->rect.height) / 480.f
 		};
 	}
-	printf("detect.\n");
+//	printf("detect.\n");
 	return 0;
 }
 

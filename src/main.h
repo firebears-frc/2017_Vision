@@ -4,21 +4,32 @@
 //#include "jlgr.h"
 #include "ccv.h"
 
+#define IMAGE_WIDTH 640
+#define IMAGE_HEIGHT 480
+#define PIXEL_SIZE (IMAGE_WIDTH * IMAGE_HEIGHT * 3)
+
 enum {
 	MODE_EDIT,
 	MODE_MAXX,
 } mode;
 
+typedef struct {
+	la_safe_t lock;
+	uint8_t pixels[PIXEL_SIZE];
+}tv_pixel_t;
+
 typedef struct{
 //	jl_sprite_t slider[3];
 //	float s1[3];
 //	float s2[3];
+	la_window_t* window;
+
 	uint8_t hasMenu;
 	uint32_t lightTex;
 	car_camera_t camera;
 	void* video_stream;
 	uint32_t video_stream_texture;
-	uint8_t pixels[640*480*3];
+	tv_pixel_t pixels;
 	ccv_scd_classifier_cascade_t* cascade;
 	la_ro_t vo;
 	la_ro_t display;
