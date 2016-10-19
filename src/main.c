@@ -3,6 +3,8 @@
 
 #include <la_thread.h>
 #include <la_file.h>
+#include <la_memory.h>
+#include <la_string.h>
 
 int tv_vision(void* data);
 
@@ -35,14 +37,29 @@ void tv_loop(ctx_t* ctx) {
 	if(window->input.keyboard.k == ' ' && window->input.keyboard.p &&
 		window->input.keyboard.h)
 	{
-		SDL_LockMutex(ctx->detections.mutex);
 		la_buffer_t savefile;
+		char filename[256];
+		uint32_t photo_count = 1;
+
 //		jlgr_notify(window, "PICTURE");
 		la_safe_get(&ctx->pixels, pixels, PIXEL_SIZE);
 		la_video_make_jpeg(&savefile, 90, pixels, 640, 480);
-		SDL_UnlockMutex(ctx->detections.mutex);
-		la_file_truncate("picture.jpg");
-		la_file_append("picture.jpg", savefile.data, savefile.size);
+
+		while(1) {
+			la_memory_clear(filename, 256);
+			la_string_append(filename, "photo_");
+			la_string_append(filename, la_string_fint(photo_count));
+			la_string_append(filename, ".jpg");
+			printf("PHOTO: %s\n", filename);
+			if(la_file_exist(filename) == FILE_TYPE_NONE) {
+//			la_file_truncate("picture.jpg");
+				la_file_append(filename, savefile.data,
+					savefile.size);
+				la_buffer_free(&savefile);
+				break;
+			}
+			photo_count++;
+		}
 	}
 }
 
@@ -90,7 +107,6 @@ static void tv_draw(ctx_t* ctx, la_window_t* window) {
 	la_ro_draw(&ctx->display);
 
 	// Vision
-
 	tv_locked_loop(ctx, window);
 	SDL_UnlockMutex(ctx->detections.mutex);
 }
@@ -113,7 +129,7 @@ static inline void tv_init_camera(ctx_t* ctx, la_window_t* window) {
 
 static void tv_init(ctx_t* ctx, la_window_t* window) {
 	tv_init_camera(ctx, window);
-        ctx->cascade = ccv_scd_classifier_cascade_read("face.sqlite3");
+	ctx->cascade = ccv_scd_classifier_cascade_read("face.sqlite3");
 	ctx->detections.mutex = SDL_CreateMutex();
 	la_thread_new(NULL, tv_vision, "vision", ctx);
 
@@ -124,5 +140,5 @@ static void tv_init(ctx_t* ctx, la_window_t* window) {
 
 int main(int argc, char* argv[]) {
 	return la_start(tv_init, (la_fn_t) tv_loop, (la_fn_t) tv_exit,
-		"2017 Vision Tool", sizeof(ctx_t));
+		"2846 Vision Tool - 2017", sizeof(ctx_t));
 }
