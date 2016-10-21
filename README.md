@@ -14,9 +14,9 @@ To build lib aldaron, cd into lib-aldaron/ and type:
 make
 ```
 
-On windows, this fails partway through - so you have to switch from Git BASH to Command Prompt after it fails, and re-run the makefile.
+On windows, this fails partway through - so you have to switch from Git BASH to Command Prompt after it fails, and re-run the makefile.  Near the end it will fail again, and you'll have to run the makefile one last time in GIT BASH.
 
-The second dependency is CCV (You can switch back to GIT BASH on Windows), you can download by cd-ing into 2017_Vision/ and running
+The second dependency is CCV (Still GIT BASH on Windows), you can download by cd-ing into 2017_Vision/ and running
 
 ```
 make gitaclib
