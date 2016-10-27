@@ -30,7 +30,6 @@ typedef struct{
 	void* video_stream;
 	uint32_t video_stream_texture;
 	tv_pixel_t pixels;
-	ccv_scd_classifier_cascade_t* cascade;
 	la_ro_t vo;
 	la_ro_t display;
 	la_ro_t pointer;
@@ -39,7 +38,7 @@ typedef struct{
 
 	struct{
 		SDL_mutex* mutex;
-		jl_rect_t rect[8]; // Detect up to 8
+		la_rect_t rect[8]; // Detect up to 8
 		uint8_t count; // 0 - 8
 	} detections;
 

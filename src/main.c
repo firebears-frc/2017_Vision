@@ -17,7 +17,7 @@ static void tv_exit(ctx_t* ctx) {
 //	car_camera_kill(&ctx->camera);
 	if((error = car_camera_kill(&ctx->camera)))
 		la_panic("car_camera_kill error %s:", error);
-	ccv_scd_classifier_cascade_free(ctx->cascade);
+
 }
 
 static void tv_panic(ctx_t* ctx, const char* format, ...) {
@@ -72,12 +72,12 @@ uint8_t tv_locked_loop(ctx_t* ctx, la_window_t* window) {
 
 	int i;
 	for (i = 0; i < ctx->detections.count; i++) {
-		jl_rect_t rc = ctx->detections.rect[i];
+		la_rect_t rc = ctx->detections.rect[i];
 //		printf("%f %f %f %f\n", rc.x, rc.y, rc.w, rc.h);
-		rc.y *= jl_gl_ar(window);
-		rc.h *= jl_gl_ar(window);
-		rc.x *= jl_gl_ar(window) * (640.f/480.f);
-		rc.w *= jl_gl_ar(window) * (640.f/480.f);
+		rc.y *= la_ro_ar(window);
+		rc.h *= la_ro_ar(window);
+		rc.x *= la_ro_ar(window) * (640.f/480.f);
+		rc.w *= la_ro_ar(window) * (640.f/480.f);
 
 		la_ro_rect(window, &ctx->pointer, rc.w, rc.h);
 		la_ro_change_image(&ctx->pointer, window->textures.game, 16, 16, 250, 0);
@@ -112,8 +112,8 @@ static void tv_draw(ctx_t* ctx, la_window_t* window) {
 }
 
 static void tv_resize(ctx_t* ctx, la_window_t* window) {
-	const float height = jl_gl_ar(window);
-	const float width = jl_gl_ar(window) * (640.f/480.f);
+	const float height = la_ro_ar(window);
+	const float width = la_ro_ar(window) * (640.f/480.f);
 
 	// Retain aspect ratio for camera display.
 	la_ro_rect(window, &ctx->display, width, height);
@@ -129,7 +129,7 @@ static inline void tv_init_camera(ctx_t* ctx, la_window_t* window) {
 
 static void tv_init(ctx_t* ctx, la_window_t* window) {
 	tv_init_camera(ctx, window);
-	ctx->cascade = ccv_scd_classifier_cascade_read("face.sqlite3");
+//	ctx->cascade = ccv_scd_classifier_cascade_read("new.sqlite3");
 	ctx->detections.mutex = SDL_CreateMutex();
 	la_thread_new(NULL, tv_vision, "vision", ctx);
 
@@ -139,6 +139,69 @@ static void tv_init(ctx_t* ctx, la_window_t* window) {
 }
 
 int main(int argc, char* argv[]) {
+	if(argc > 1) {
+		char* positive[] = {
+			"positive6.jpg",
+			"positive7.jpg",
+			"positive8.jpg",
+			"positive9.jpg",
+			"positive5.jpg"
+		};
+
+		char* negative[] = {
+			"negative1.jpg",
+			"negative2.jpg",
+			"negative3.jpg",
+			"negative4.jpg"
+		};
+
+		ccv_scd_train_param_t params = {
+			.boosting = 10,
+			.size = ccv_size(48, 48),
+			.feature = {
+				.base = ccv_size(8, 8),
+				.range_through = 4,
+				.step_through = 4,
+			},
+			.stop_criteria = {
+				.hit_rate = 0.995,
+				.false_positive_rate = 0.5,
+				.accu_false_positive_rate = 1e-7,
+				.auc_crit = 1e-5,
+				.maximum_feature = 2048,
+				.prune_stage = 3,
+				.prune_feature = 4,
+			},
+			.weight_trimming = 0.98,
+			.C = 0.0005,
+			.grayscale = 0,
+		};
+
+		ccv_array_t* posfiles = ccv_array_new(sizeof(ccv_file_info_t),
+			5, 0);
+		ccv_array_t* negfiles = ccv_array_new(sizeof(ccv_file_info_t),
+			4, 0);
+
+		ccv_file_info_t pos_info[5];
+		ccv_file_info_t neg_info[4];
+
+		for(int i = 0; i < 5; i++) {
+			pos_info[i].filename = positive[i];
+			ccv_array_push(posfiles, &pos_info[i]);
+		}
+
+		for(int i = 0; i < 4; i++) {
+			neg_info[i].filename = negative[i];
+			ccv_array_push(negfiles, &neg_info[i]);
+		}
+
+		la_print("creating cascade....");
+		ccv_scd_classifier_cascade_t* cascade =
+			ccv_scd_classifier_cascade_new(posfiles, negfiles, 4,
+				"new.sqlite3", params);
+		ccv_scd_classifier_cascade_write(cascade, "new.sqlite3");
+		return 0;
+	}
 	return la_start(tv_init, (la_fn_t) tv_loop, (la_fn_t) tv_exit,
 		"2846 Vision Tool - 2017", sizeof(ctx_t));
 }
